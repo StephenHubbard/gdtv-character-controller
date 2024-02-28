@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 9c08203e765444898bd0e2efd1dbbaf5
+timeCreated: 1660075548
+AssetOrigin:
+  serializedVersion: 1
+  productId: 226927
+  packageName: Asset Inventory
+  packageVersion: 1.11.0
+  assetPath: Assets/AssetInventory/Editor/Scripts/Importers/PreviewGenerator.cs
+  uploadId: 617059

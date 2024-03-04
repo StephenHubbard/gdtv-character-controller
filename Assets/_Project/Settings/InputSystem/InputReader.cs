@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,13 +6,12 @@ namespace GameDevTV
 {
 	public class InputReader : MonoBehaviour
 	{
-		[Header("Character Input Values")]
-		public Vector2 Move { get; private set; } 
+		public Vector2 Move { get; private set; }
 		public Vector2 Look { get; private set; }
 		public Vector2 Zoom { get; private set; }
 		public bool IsSprinting { get; private set; }
-		public bool Jumped;
-		
+		[field: NonSerialized]	public bool IsJumping { get; set; }
+
 		bool _cursorLocked = true;
 		
 		public void OnMove(InputValue value)
@@ -51,7 +51,7 @@ namespace GameDevTV
 
 		void JumpInput(bool newJumpState)
 		{
-			Jumped = newJumpState;
+			IsJumping = newJumpState;
 		}
 
 		void SprintInput(bool newSprintState)

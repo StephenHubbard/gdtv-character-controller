@@ -1,68 +1,58 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using GameDevTV.Utils;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace GameDevTV
+namespace GameDevTV.Platformer
 {
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInput))]
     public class ThirdPersonController : MonoBehaviour
     {
+        public Action Jump;
+        
         [Header("Player")]
-        [Tooltip("Move speed of the character in m/s")]
         [SerializeField] float _moveSpeed = 4.0f;
-        [Tooltip("Sprint speed of the character in m/s")]
-        [SerializeField] float _sprintSpeed = 6;
-        [Tooltip("How fast the character turns to face movement direction")]
+        [SerializeField] float _sprintSpeed = 6f;
         [Range(0.0f, 0.3f)] [SerializeField] float _rotationSmoothTime = 0.1f;
-        [Tooltip("Acceleration and deceleration")]
         [SerializeField] float _speedChangeRate = 10.0f;
-        [Tooltip("The height the player can jump")]
-        [SerializeField] float _jumpHeight = 1.2f;
-        [Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
+        [SerializeField] float _minJumpHeight = 1f;
+        [SerializeField] float _maxJumpHeight = 2f;
         [SerializeField] float _gravity = -15.0f;
-        [Tooltip("Time required to pass before being able to jump again. Set to 0f to instantly jump again")]
-        [SerializeField] float _jumpCooldown = 0f;
+        [SerializeField] float _terminalVelocity = 53.0f;
+
+        // [SerializeField] float _jumpCooldown = 0f;
 
         [Header("Player Grounded")]
-        [Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
         [SerializeField] bool _grounded = true;
-        [Tooltip("Useful for rough ground or matching player radius")]
         [SerializeField] float _groundedOffset = -0.14f;
-        [Tooltip("The radius of the grounded check. Should match the radius of the CharacterController")]
         [SerializeField] float _groundedRadius = 0.28f;
-        [Tooltip("What layers the character uses as ground")]
         [SerializeField] LayerMask _groundLayers;
 
         [Header("Cinemachine")]
-        [Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
         [SerializeField] GameObject _cameraFollowPoint;
-        [Tooltip("How far in degrees can you move the camera up")]
         [SerializeField] float _topClamp = 70.0f;
-        [Tooltip("How far in degrees can you move the camera down")]
         [SerializeField] float _bottomClamp = 10.0f;
 
-        // Cinemachine
         float _cinemachineTargetYaw;
         float _cinemachineTargetPitch;
 
-        // Player
         float _speed;
         float _targetRotation = 0.0f;
         float _rotationVelocity;
+        float _minJumpVelocity, _maxJumpVelocity;
         float _verticalVelocity;
-        float _terminalVelocity = 53.0f;
-
-        // Timeout deltatime
-        float _jumpTimeoutDelta;
-
+        bool _jumpToConsume; 
+        
         PlayerInput _playerInput;
         CharacterController _controller;
         InputReader _inputReader;
         GameObject _mainCamera;
 
-        private const float _threshold = 0.01f;
+        const float _threshold = 0.01f;
 
-        private bool IsCurrentDeviceMouse => _playerInput.currentControlScheme == "KeyboardMouse";
+        bool _isCurrentDeviceMouse => _playerInput.currentControlScheme == "KeyboardMouse";
 
         private void Awake()
         {
@@ -77,8 +67,9 @@ namespace GameDevTV
 
         private void Start()
         {
-            // Reset our timeouts on start
-            _jumpTimeoutDelta = _jumpCooldown;
+            // The square root of height * 2 * gravity = how much velocity needed to reach desired height
+            _minJumpVelocity = Mathf.Sqrt (2 * Mathf.Abs (_gravity) * _minJumpHeight);
+            _maxJumpVelocity = Mathf.Sqrt (2 * Mathf.Abs (_gravity) * _maxJumpHeight);
         }
 
         private void Update()
@@ -86,13 +77,15 @@ namespace GameDevTV
             GroundedCheck();
             JumpAndGravity();
             Move();
+            
+            // Debug.Log(_inputReader.IsJumping);
         }
 
         private void LateUpdate()
         {
             CameraRotation();
         }
-
+        
         private void GroundedCheck()
         {
             Vector3 position = transform.position;
@@ -117,7 +110,7 @@ namespace GameDevTV
             if (_inputReader.Look.sqrMagnitude >= _threshold)
             {
                 // Multiply controller input by Time.deltaTime but not mouse input;
-                float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
+                float deltaTimeMultiplier = _isCurrentDeviceMouse ? 1.0f : Time.deltaTime;
 
                 _cinemachineTargetYaw += _inputReader.Look.x * deltaTimeMultiplier;
                 _cinemachineTargetPitch += _inputReader.Look.y * deltaTimeMultiplier;
@@ -187,26 +180,19 @@ namespace GameDevTV
                     _verticalVelocity = -2f;
                 }
 
-                // Jump
-                if (_inputReader.Jumped && _jumpTimeoutDelta <= 0.0f)
+                if (_inputReader.IsJumping)
                 {
-                    // The square root of height * -2 * gravity (H x -2 x G) = how much velocity needed to reach desired height
-                    _verticalVelocity = Mathf.Sqrt(_jumpHeight * -2f * _gravity);
-                }
-
-                // Jump cooldown after landing
-                if (_jumpTimeoutDelta >= 0.0f)
-                {
-                    _jumpTimeoutDelta -= Time.deltaTime;
+                    _verticalVelocity = _maxJumpVelocity;
                 }
             }
-            else
+            // else
+            // {
+            //     _inputReader.IsJumping = false;
+            // }
+            
+            if (!_inputReader.IsJumping && _verticalVelocity > _minJumpVelocity)
             {
-                // Reset the jump timeout timer
-                _jumpTimeoutDelta = _jumpCooldown;
-
-                // if we are not grounded, do not jump
-                _inputReader.Jumped = false;
+                _verticalVelocity = _minJumpVelocity;
             }
 
             // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)

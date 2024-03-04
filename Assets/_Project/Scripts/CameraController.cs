@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
 
-namespace GameDevTV
+namespace GameDevTV.Platformer
 {
     public class CameraController : MonoBehaviour
     {
@@ -25,7 +25,7 @@ namespace GameDevTV
             _cinemachine3RdPersonFollow = _cinemachineCamera.GetCinemachineComponent<Cinemachine3rdPersonFollow>();
             _targetDistance = _cinemachine3RdPersonFollow.CameraDistance;
         }
-
+        
         private void Update()
         {
             Vector2 zoomValue = _inputReader.Zoom;
